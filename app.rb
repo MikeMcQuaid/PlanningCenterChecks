@@ -32,9 +32,17 @@ def api_hash object
 end
 
 get "/songs" do
-  api_hash(:songs).to_s
+  songs_without_attachments = "<h1>Songs without attachments</h1>"
+
+  songs = api_hash(:songs)
+  songs.each do |song|
+    next if song["attachments"].empty?
+    songs_without_attachments += "<li>#{song["title"]}</li>"
+  end
+
+  songs_without_attachments
 end
 
 get "/" do
-  redirect to "/songs"
+  "<a href='/songs'>Songs without attachments</a>"
 end
