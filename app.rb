@@ -58,6 +58,24 @@ get "/songs" do
   songs_without_attachments
 end
 
+get "/docs" do
+  songs_doc_attachments = "<h1>Songs with .doc(x) attachments</h1>"
+
+  songs = api_hash(:songs, include_arrangements: true)
+  songs.each do |song|
+    attachments = song_and_arrangement_attachments(song)
+    next if attachments.empty?
+    attachments.each do |attachment|
+      filename = attachment["filename"]
+      next unless filename =~ /\.docx?$/i
+      songs_doc_attachments += "<li>#{song["title"]}: #{filename}</li>"
+    end
+  end
+
+  songs_doc_attachments
+end
+
 get "/" do
-  "<a href='/songs'>Songs without attachments</a>"
+  "<a href='/songs'>Songs without attachments</a><br>\n" \
+  "<a href='/docs'>Songs with .doc(x) attachments</a>"
 end
