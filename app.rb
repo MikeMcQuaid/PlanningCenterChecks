@@ -25,18 +25,33 @@ get "/callback" do
   redirect to "/"
 end
 
-def api_hash object
-  response = @access_token.get "/#{object}.json"
+def api_hash object, parameters={}
+  endpoint = "/#{object}.json"
+  parameters.each do |key, value|
+    start = parameters.keys.first == key ? "?" : "&"
+    endpoint += "#{start}#{key}=#{value}"
+  end
+  response = @access_token.get endpoint
   body = JSON.parse response.body
   body[object.to_s]
+end
+
+def song_and_arrangement_attachments song
+  attachments = song["attachments"]
+
+  song["arrangements"].to_a.each do |arrangement|
+    attachments += arrangement["attachments"]
+  end
+
+  attachments
 end
 
 get "/songs" do
   songs_without_attachments = "<h1>Songs without attachments</h1>"
 
-  songs = api_hash(:songs)
+  songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
-    next if song["attachments"].empty?
+    next if song_and_arrangement_attachments(song).empty?
     songs_without_attachments += "<li>#{song["title"]}</li>"
   end
 
