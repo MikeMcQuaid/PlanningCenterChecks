@@ -6,3 +6,8 @@ gem "unicorn"
 gem "sinatra"
 gem "oauth"
 gem "json"
+
+group :development do
+  gem "guard-rack"
+  gem "awesome_print"
+end
