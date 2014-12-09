@@ -1,6 +1,7 @@
 require "sinatra"
 require "oauth"
 require "json"
+require "awesome_print" if ENV["RACK_ENV"] == "development"
 
 enable :sessions
 
