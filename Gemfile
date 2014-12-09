@@ -8,6 +8,6 @@ gem "oauth"
 gem "json"
 
 group :development do
-  gem "guard-rack"
+  gem "guard-process"
   gem "awesome_print"
 end

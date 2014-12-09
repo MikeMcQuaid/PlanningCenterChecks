@@ -1,5 +1,6 @@
-guard "rack" do
-  watch("app.rb")
-  watch("config.ru")
-  watch("Gemfile.lock")
+guard "process", name: "foreman", command: "foreman start" do
+  watch "app.rb"
+  watch "config.ru"
+  watch "unicorn.rb"
+  watch "Gemfile.lock"
 end
