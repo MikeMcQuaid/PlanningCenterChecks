@@ -33,7 +33,7 @@ GEM
       method_source (~> 0.8.1)
       slop (~> 3.4)
     rack (1.5.2)
-    rack-protection (1.5.2)
+    rack-protection (1.5.3)
       rack
     raindrops (0.13.0)
     rb-fsevent (0.9.4)
