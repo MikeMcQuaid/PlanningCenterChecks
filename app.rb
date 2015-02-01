@@ -3,27 +3,39 @@ require "oauth"
 require "json"
 require "awesome_print" if ENV["RACK_ENV"] == "development"
 
-enable :sessions
-
 PCO_KEY = ENV["PCO_KEY"]
 PCO_SECRET = ENV["PCO_SECRET"]
+SESSION_SECRET = ENV["SESSION_SECRET"]
+
+set :sessions, secret: SESSION_SECRET
+
+def oauth
+  @oauth ||= OAuth::Consumer.new PCO_KEY, PCO_SECRET, site: "https://planningcenteronline.com"
+end
 
 before %r{^(?!/callback)} do
-  @access_token = session[:access_token]
-  next if @access_token
+  if session[:access_token]
+    @access_token = OAuth::AccessToken.from_hash oauth, session[:access_token]
+    next if @access_token
+  end
 
-  oauth = OAuth::Consumer.new PCO_KEY, PCO_SECRET, site: "https://planningcenteronline.com"
   request_token = oauth.get_request_token oauth_callback: "#{request.base_url}/callback"
-  session[:request_token] = request_token
+  session[:request_token] = token_to_hash request_token
+
   redirect to request_token.authorize_url
 end
 
 get "/callback" do
-  request_token = session[:request_token]
+  request_token = OAuth::RequestToken.from_hash oauth, session[:request_token]
+
   @access_token = request_token.get_access_token oauth_verifier: params[:oauth_verifier]
-  session[:access_token] = @access_token
+  session[:access_token] = token_to_hash @access_token
 
   redirect to "/"
+end
+
+def token_to_hash token
+  token.params.select {|key,_| key.is_a? Symbol }
 end
 
 def api_hash object, parameters={}
