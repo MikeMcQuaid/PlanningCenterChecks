@@ -1,0 +1,24 @@
+{
+  "name": "PsAndGsPCOHax",
+  "description": "A simple use of the Planning Centre Online API to query for data that hasn't been input correctly.",
+  "website": "https://github.com/mikemcquaid/PsAndGsPCOHax",
+  "repository": "https://github.com/mikemcquaid/PsAndGsPCOHax",
+  "keywords": ["ruby", "planningcentreonline"],
+  "success_url": "/",
+  "env": {
+    "PCO_KEY": {
+      "description": "The Planning Center Online API OAuth 1.0a consumer key."
+    },
+    "PCO_SECRET": {
+      "description": "The Planning Center Online API key OAuth 1.0a secret."
+    },
+    "SESSION_SECRET": {
+      "description": "The secret used for cookie session storage",
+      "generator": "secret"
+    },
+    "WEB_CONCURRENCY": {
+      "description": "The number of Unicorn (web server) processes to run.",
+      "required": false
+    }
+  }
+}
