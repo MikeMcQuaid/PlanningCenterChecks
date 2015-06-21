@@ -8,6 +8,8 @@ PCO_KEY = ENV["PCO_KEY"]
 PCO_SECRET = ENV["PCO_SECRET"]
 SESSION_SECRET = ENV["SESSION_SECRET"]
 
+URL_ROOT = "https://services.planningcenteronline.com"
+
 set :sessions, secret: SESSION_SECRET
 
 def oauth
@@ -62,13 +64,22 @@ def song_and_arrangement_attachments song
   attachments
 end
 
+def song_title_author song
+  "#{song["title"]} - #{song["author"]}"
+end
+
+def song_link song
+  href = "#{URL_ROOT}/songs/#{song["id"]}"
+  "<a href='#{href}'>#{song_title_author(song)}</a>"
+end
+
 get "/songs" do
   songs_without_attachments = "<h1>Songs without attachments</h1>"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     next if song_and_arrangement_attachments(song).empty?
-    songs_without_attachments += "<li>#{song["title"]}</li>"
+    songs_without_attachments += "<li>#{song_link(song)}</li>"
   end
 
   songs_without_attachments
@@ -81,7 +92,7 @@ get "/no_media" do
   songs.each do |song|
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["type"] =~ /Youtube|Spotify/ }
-    songs_without_media += "<li>#{song["title"]}</li>"
+    songs_without_media += "<li>#{song_link(song)}</li>"
   end
 
   songs_without_media
@@ -97,7 +108,7 @@ get "/docs" do
     attachments.each do |attachment|
       filename = attachment["filename"]
       next unless filename =~ /\.docx?$/i
-      songs_doc_attachments += "<li>#{song["title"]}: #{filename}</li>"
+      songs_doc_attachments += "<li>#{song_link(song)}: #{filename}</li>"
     end
   end
 
@@ -111,7 +122,7 @@ def songs_without_type_attachments(type)
   songs.each do |song|
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["filename"] =~ /\.#{type}$/i }
-    songs_without_type_attachments += "<li>#{song["title"]}</li>"
+    songs_without_type_attachments += "<li>#{song_link(song)}</li>"
   end
 
   songs_without_type_attachments
@@ -136,28 +147,40 @@ get "/outdated" do
       two_months_ago = Date.today - 60
       next if last_song_date > two_months_ago
     end
-    outdated_songs += "<li>#{song["title"]}</li>"
+    outdated_songs += "<li>#{song_link(song)}</li>"
   end
 
   outdated_songs
 end
 
 get "/default_arrangements" do
-  default_arrangements = "<h1>Songs with 'Default Arrangement' as an arrangement title</h1>"
+  default_arrangements = "<h1>Arrangements named 'Default Arrangement'</h1>"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     song["arrangements"].to_a.each do |arrangement|
       next unless arrangement["name"] =~ /^default arrangement$/i
-      default_arrangements += "<li>#{song["title"]}</li>"
+      href = "#{URL_ROOT}/arrangements/#{arrangement["id"]}"
+      default_arrangements += "<li><a href='#{href}'>#{song_title_author(song)}</a></li>"
     end
   end
 
   default_arrangements
 end
 
-def plan_responses(stream, type)
-  stream << "<h1>#{type} plan responses</h1>"
+def person_link person
+  id = person["person_id"] || person["id"]
+  name = person["person_name"] || person["name"]
+  position = person["position"]
+
+  name_position = "#{name}"
+  name_position += " (#{position})" if position
+  href = "#{URL_ROOT}/people/#{id}"
+  "<a href='#{href}'>#{name_position}</a>"
+end
+
+def plan_responses(out, type)
+  out << "<h1>#{type} plan responses</h1>"
 
   organisation = api_hash(:organization)
   service_types = organisation["service_types"]
@@ -168,7 +191,10 @@ def plan_responses(stream, type)
       plan_people = plan_detail["plan_people"]
       plan_people.each do |plan_person|
         next unless plan_person["status"] == type[0]
-        stream << "<li>#{plan["dates"]}: #{plan_person["person_name"]} (#{plan_person["position"]})</li>"
+        plan_href = "#{URL_ROOT}/plans/#{plan["id"]}"
+        plan_time = Time.parse(plan_detail["service_times"].first["starts_at"])
+        plan_date_time = plan_time.strftime("%d %b %H:%M")
+        out << "<li><a href='#{plan_href}'>#{plan_date_time}</a>: #{person_link(plan_person)}</li>"
       end
     end
   end
@@ -190,7 +216,7 @@ get "/no_birthday" do
     people.each do |person|
       person_detail = api_hash("people/#{person["id"]}")
       next if person_detail["birthdate"]
-      out << "<li>#{person_detail["name"]}</li>"
+      out << "<li>#{person_link(person)}</li>"
     end
   end
 end
