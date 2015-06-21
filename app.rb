@@ -1,6 +1,7 @@
 require "sinatra"
 require "oauth"
 require "json"
+require "date"
 require "awesome_print" if ENV["RACK_ENV"] == "development"
 
 PCO_KEY = ENV["PCO_KEY"]
@@ -46,7 +47,9 @@ def api_hash object, parameters={}
   end
   response = @access_token.get endpoint
   body = JSON.parse response.body
-  body[object.to_s]
+  subbody = body[object.to_s] if body.is_a? Hash
+  body = subbody if subbody
+  body
 end
 
 def song_and_arrangement_attachments song
@@ -71,6 +74,19 @@ get "/songs" do
   songs_without_attachments
 end
 
+get "/no_media" do
+  songs_without_media = "<h1>Songs without Spotify/YouTube media</h1>"
+
+  songs = api_hash(:songs, include_arrangements: true)
+  songs.each do |song|
+    attachments = song_and_arrangement_attachments(song)
+    next if attachments.find {|a| a["type"] =~ /Youtube|Spotify/ }
+    songs_without_media += "<li>#{song["title"]}</li>"
+  end
+
+  songs_without_media
+end
+
 get "/docs" do
   songs_doc_attachments = "<h1>Songs with .doc(x) attachments</h1>"
 
@@ -88,7 +104,108 @@ get "/docs" do
   songs_doc_attachments
 end
 
+def songs_without_type_attachments(type)
+  songs_without_type_attachments = "<h1>Songs without .#{type} attachments</h1>"
+
+  songs = api_hash(:songs, include_arrangements: true)
+  songs.each do |song|
+    attachments = song_and_arrangement_attachments(song)
+    next if attachments.find {|a| a["filename"] =~ /\.#{type}$/i }
+    songs_without_type_attachments += "<li>#{song["title"]}</li>"
+  end
+
+  songs_without_type_attachments
+end
+
+get "/no_pdf" do
+  songs_without_type_attachments(:pdf)
+end
+
+get "/no_onsong" do
+  songs_without_type_attachments(:onsong)
+end
+
+get "/outdated" do
+  outdated_songs = "<h1>Songs not used in 60 days</h1>"
+
+  songs = api_hash(:songs)
+  songs.each do |song|
+    if (last_song_date = song["last_scheduled_dates"])
+      ap last_song_date
+      last_song_date = Date.parse(last_song_date)
+      two_months_ago = Date.today - 60
+      next if last_song_date > two_months_ago
+    end
+    outdated_songs += "<li>#{song["title"]}</li>"
+  end
+
+  outdated_songs
+end
+
+get "/default_arrangements" do
+  default_arrangements = "<h1>Songs with 'Default Arrangement' as an arrangement title</h1>"
+
+  songs = api_hash(:songs, include_arrangements: true)
+  songs.each do |song|
+    song["arrangements"].to_a.each do |arrangement|
+      next unless arrangement["name"] =~ /^default arrangement$/i
+      default_arrangements += "<li>#{song["title"]}</li>"
+    end
+  end
+
+  default_arrangements
+end
+
+def plan_responses(stream, type)
+  stream << "<h1>#{type} plan responses</h1>"
+
+  organisation = api_hash(:organization)
+  service_types = organisation["service_types"]
+  service_types.each do |service_type|
+    plans = api_hash("service_types/#{service_type["id"]}/plans")
+    plans.each do |plan|
+      plan_detail = api_hash("plans/#{plan["id"]}")
+      plan_people = plan_detail["plan_people"]
+      plan_people.each do |plan_person|
+        next unless plan_person["status"] == type[0]
+        stream << "<li>#{plan["dates"]}: #{plan_person["person_name"]} (#{plan_person["position"]})</li>"
+      end
+    end
+  end
+end
+
+get "/unconfirmed" do
+  stream {|out| plan_responses(out, "Unconfirmed") }
+end
+
+get "/declined" do
+  stream {|out| plan_responses(out, "Declined") }
+end
+
+get "/no_birthday" do
+  stream do |out|
+    out << "<h1>Team members without birthdays</h1>"
+
+    people = api_hash(:people)
+    people.each do |person|
+      person_detail = api_hash("people/#{person["id"]}")
+      next if person_detail["birthdate"]
+      out << "<li>#{person_detail["name"]}</li>"
+    end
+  end
+end
+
 get "/" do
-  "<a href='/songs'>Songs without attachments</a><br>\n" \
-  "<a href='/docs'>Songs with .doc(x) attachments</a>"
+<<-EOS
+<li><a href='/songs'>Songs without attachments</a></li>
+<li><a href='/no_media'>Songs without Spotify/YouTube media</a></li>
+<li><a href='/docs'>Songs with .doc(x) attachments</a></li>
+<li><a href='/no_pdf'>Songs without .pdf attachments</a></li>
+<li><a href='/no_onsong'>Songs without .onsong attachments</a></li>
+<li><a href='/outdated'>Songs not used in 60 days</a></li>
+<li><a href='/default_arrangements'>Arrangements named 'Default Arrangement'</a></li>
+<li><a href='/unconfirmed'>Unconfirmed plan responses</a></li>
+<li><a href='/declined'>Declined plan responses</a></li>
+<li><a href='/no_birthday'>Team members without birthdays</a></li>
+EOS
 end
