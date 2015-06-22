@@ -1,8 +1,8 @@
 {
-  "name": "PsAndGsPCOHax",
+  "name": "PlanningCenterChecks",
   "description": "A simple use of the Planning Centre Online API to query for data that hasn't been input correctly.",
-  "website": "https://github.com/mikemcquaid/PsAndGsPCOHax",
-  "repository": "https://github.com/mikemcquaid/PsAndGsPCOHax",
+  "website": "https://github.com/mikemcquaid/PlanningCenterChecks",
+  "repository": "https://github.com/mikemcquaid/PlanningCenterChecks",
   "keywords": ["ruby", "planningcentreonline"],
   "success_url": "/",
   "env": {
