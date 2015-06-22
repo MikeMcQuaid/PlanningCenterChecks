@@ -6,6 +6,7 @@ gem "unicorn"
 gem "sinatra"
 gem "oauth"
 gem "json"
+gem "kramdown"
 
 group :development do
   gem "guard-process"

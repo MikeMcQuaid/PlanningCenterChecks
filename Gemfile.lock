@@ -21,6 +21,7 @@ GEM
     hitimes (1.2.2)
     json (1.8.1)
     kgio (2.9.2)
+    kramdown (1.7.0)
     listen (2.8.3)
       celluloid (>= 0.15.2)
       rb-fsevent (>= 0.9.3)
@@ -62,6 +63,7 @@ DEPENDENCIES
   awesome_print
   guard-process
   json
+  kramdown
   oauth
   sinatra
   unicorn

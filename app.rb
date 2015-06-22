@@ -65,7 +65,9 @@ def song_and_arrangement_attachments song
 end
 
 def song_title_author song
-  "#{song["title"]} - #{song["author"]}"
+  song_title_author = "#{song["title"]}"
+  song_title_author += " - #{song["author"]}" unless song["author"].empty?
+  song_title_author
 end
 
 def song_link song
@@ -73,33 +75,56 @@ def song_link song
   "<a href='#{href}'>#{song_title_author(song)}</a>"
 end
 
+def bootstrap_html(html)
+  text = markdown(html)
+  text.gsub!("<ul>", "<ul class='list-group'>")
+  text.gsub!("<li>", "<li class='list-group-item'>")
+  text
+end
+
+def render_layout
+  if @markdown.is_a? StringIO
+    markdown_text = @markdown.string
+    @markdown.close
+    @markdown = markdown_text
+  end
+  @text = bootstrap_html(markdown(@markdown))
+
+  erb :full
+end
+
+before do
+  @title = nil
+  @markdown = StringIO.new
+end
+
 get "/songs" do
-  songs_without_attachments = "<h1>Songs without attachments</h1>"
+  @title = "Songs without attachments"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     next if song_and_arrangement_attachments(song).empty?
-    songs_without_attachments += "<li>#{song_link(song)}</li>"
+    @markdown.puts "* #{song_link(song)}"
   end
 
-  songs_without_attachments
+  render_layout
 end
 
 get "/no_media" do
-  songs_without_media = "<h1>Songs without Spotify/YouTube media</h1>"
+  @title = "Songs without Spotify/YouTube media"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["type"] =~ /Youtube|Spotify/ }
-    songs_without_media += "<li>#{song_link(song)}</li>"
+    @markdown.puts "* #{song_link(song)}"
   end
 
-  songs_without_media
+  render_layout
 end
 
 get "/docs" do
-  songs_doc_attachments = "<h1>Songs with .doc(x) attachments</h1>"
+  @title = "Songs with .doc(x) attachments"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
@@ -108,24 +133,24 @@ get "/docs" do
     attachments.each do |attachment|
       filename = attachment["filename"]
       next unless filename =~ /\.docx?$/i
-      songs_doc_attachments += "<li>#{song_link(song)}: #{filename}</li>"
+      @markdown.puts "* #{song_link(song)}: #{filename}"
     end
   end
 
-  songs_doc_attachments
+  render_layout
 end
 
 def songs_without_type_attachments(type)
-  songs_without_type_attachments = "<h1>Songs without .#{type} attachments</h1>"
+  @title = "Songs without .#{type} attachments"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["filename"] =~ /\.#{type}$/i }
-    songs_without_type_attachments += "<li>#{song_link(song)}</li>"
+    @markdown.puts "* #{song_link(song)}"
   end
 
-  songs_without_type_attachments
+  render_layout
 end
 
 get "/no_pdf" do
@@ -137,35 +162,34 @@ get "/no_onsong" do
 end
 
 get "/outdated" do
-  outdated_songs = "<h1>Songs not used in 60 days</h1>"
+  @title = "Songs not used in 60 days"
 
   songs = api_hash(:songs)
   songs.each do |song|
     if (last_song_date = song["last_scheduled_dates"])
-      ap last_song_date
       last_song_date = Date.parse(last_song_date)
       two_months_ago = Date.today - 60
       next if last_song_date > two_months_ago
     end
-    outdated_songs += "<li>#{song_link(song)}</li>"
+    @markdown.puts "* #{song_link(song)}"
   end
 
-  outdated_songs
+  render_layout
 end
 
 get "/default_arrangements" do
-  default_arrangements = "<h1>Arrangements named 'Default Arrangement'</h1>"
+  @title = "Arrangements named 'Default Arrangement'"
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
     song["arrangements"].to_a.each do |arrangement|
       next unless arrangement["name"] =~ /^default arrangement$/i
-      href = "#{URL_ROOT}/arrangements/#{arrangement["id"]}"
-      default_arrangements += "<li><a href='#{href}'>#{song_title_author(song)}</a></li>"
+      link = "#{URL_ROOT}/arrangements/#{arrangement["id"]}"
+      @markdown.puts "* [#{song_title_author(song)}](#{link})"
     end
   end
 
-  default_arrangements
+  render_layout
 end
 
 def person_link person
@@ -175,15 +199,24 @@ def person_link person
 
   name_position = "#{name}"
   name_position += " (#{position})" if position
-  href = "#{URL_ROOT}/people/#{id}"
-  "<a href='#{href}'>#{name_position}</a>"
+  link = "#{URL_ROOT}/people/#{id}"
+  "<a href='#{link}'>#{name_position}</a>"
+end
+
+def stream_header(out, title)
+  @title = title
+  out << erb(:header) << "<ul>"
+end
+
+def stream_footer(out)
+  out << "</ul>" << erb(:footer)
 end
 
 def plan_responses(out, type)
-  out << "<h1>#{type} plan responses</h1>"
+  stream_header(out, "#{type} plan responses")
 
-  organisation = api_hash(:organization)
-  service_types = organisation["service_types"]
+  organization = api_hash(:organization)
+  service_types = organization["service_types"]
   service_types.each do |service_type|
     plans = api_hash("service_types/#{service_type["id"]}/plans")
     plans.each do |plan|
@@ -194,10 +227,12 @@ def plan_responses(out, type)
         plan_href = "#{URL_ROOT}/plans/#{plan["id"]}"
         plan_time = Time.parse(plan_detail["service_times"].first["starts_at"])
         plan_date_time = plan_time.strftime("%d %b %H:%M")
-        out << "<li><a href='#{plan_href}'>#{plan_date_time}</a>: #{person_link(plan_person)}</li>"
+        out << bootstrap_html("<li><a href='#{plan_href}'>#{plan_date_time}</a>: #{person_link(plan_person)}</li>")
       end
     end
   end
+
+  stream_footer(out)
 end
 
 get "/unconfirmed" do
@@ -210,28 +245,33 @@ end
 
 get "/no_birthday" do
   stream do |out|
-    out << "<h1>Team members without birthdays</h1>"
+    stream_header(out, "Team members without birthdays")
 
     people = api_hash(:people)
     people.each do |person|
       person_detail = api_hash("people/#{person["id"]}")
       next if person_detail["birthdate"]
-      out << "<li>#{person_link(person)}</li>"
+      out << bootstrap_html("<li>#{person_link(person)}</li>")
     end
+
+    stream_footer(out)
   end
 end
 
 get "/" do
-<<-EOS
-<li><a href='/songs'>Songs without attachments</a></li>
-<li><a href='/no_media'>Songs without Spotify/YouTube media</a></li>
-<li><a href='/docs'>Songs with .doc(x) attachments</a></li>
-<li><a href='/no_pdf'>Songs without .pdf attachments</a></li>
-<li><a href='/no_onsong'>Songs without .onsong attachments</a></li>
-<li><a href='/outdated'>Songs not used in 60 days</a></li>
-<li><a href='/default_arrangements'>Arrangements named 'Default Arrangement'</a></li>
-<li><a href='/unconfirmed'>Unconfirmed plan responses</a></li>
-<li><a href='/declined'>Declined plan responses</a></li>
-<li><a href='/no_birthday'>Team members without birthdays</a></li>
+  organization = api_hash(:organization)
+  @title = "#{organization["name"]} Planning Center Checks"
+  @markdown.puts <<-EOS
+* [Songs without attachment](/songs)
+* [Songs without Spotify/YouTube media](/no_media)
+* [Songs with .doc(x) attachments](/docs)
+* [Songs without .pdf attachments](/no_pdf)
+* [Songs without .onsong attachments](/no_onsong)
+* [Songs not used in 60 days](/outdated)
+* [Arrangements named 'Default Arrangement'](/default_arrangements)
+* [Unconfirmed plan responses](/unconfirmed)
+* [Declined plan responses](/declined)
+* [Team members without birthdays](/no_birthday)
 EOS
+  render_layout
 end
