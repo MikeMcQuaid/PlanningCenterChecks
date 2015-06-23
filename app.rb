@@ -8,12 +8,12 @@ PCO_KEY = ENV["PCO_KEY"]
 PCO_SECRET = ENV["PCO_SECRET"]
 SESSION_SECRET = ENV["SESSION_SECRET"]
 
-URL_ROOT = "https://services.planningcenteronline.com"
+PCO_URL = "https://services.planningcenteronline.com"
 
 set :sessions, secret: SESSION_SECRET
 
 def oauth
-  @oauth ||= OAuth::Consumer.new PCO_KEY, PCO_SECRET, site: "https://planningcenteronline.com"
+  @oauth ||= OAuth::Consumer.new PCO_KEY, PCO_SECRET, site: PCO_URL
 end
 
 before %r{^(?!/callback)} do
@@ -71,7 +71,7 @@ def song_title_author song
 end
 
 def song_link song
-  href = "#{URL_ROOT}/songs/#{song["id"]}"
+  href = "#{PCO_URL}/songs/#{song["id"]}"
   "<a href='#{href}'>#{song_title_author(song)}</a>"
 end
 
@@ -184,7 +184,7 @@ get "/default_arrangements" do
   songs.each do |song|
     song["arrangements"].to_a.each do |arrangement|
       next unless arrangement["name"] =~ /^default arrangement$/i
-      link = "#{URL_ROOT}/arrangements/#{arrangement["id"]}"
+      link = "#{PCO_URL}/arrangements/#{arrangement["id"]}"
       @markdown.puts "* [#{song_title_author(song)}](#{link})"
     end
   end
@@ -199,7 +199,7 @@ def person_link person
 
   name_position = "#{name}"
   name_position += " (#{position})" if position
-  link = "#{URL_ROOT}/people/#{id}"
+  link = "#{PCO_URL}/people/#{id}"
   "<a href='#{link}'>#{name_position}</a>"
 end
 
@@ -224,7 +224,7 @@ def plan_responses(out, type)
       plan_people = plan_detail["plan_people"]
       plan_people.each do |plan_person|
         next unless plan_person["status"] == type[0]
-        plan_href = "#{URL_ROOT}/plans/#{plan["id"]}"
+        plan_href = "#{PCO_URL}/plans/#{plan["id"]}"
         plan_time = Time.parse(plan_detail["service_times"].first["starts_at"])
         plan_date_time = plan_time.strftime("%d %b %H:%M")
         out << bootstrap_html("<li><a href='#{plan_href}'>#{plan_date_time}</a>: #{person_link(plan_person)}</li>")
