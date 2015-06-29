@@ -75,6 +75,14 @@ def song_link song
   "<a href='#{href}'>#{song_title_author(song)}</a>"
 end
 
+def song_current_new? song
+  !!song["properties"].to_a.find do |property|
+    if property["field"] == "Type"
+      (property["option"] == "#Current") || (property["option"] == "#New")
+    end
+  end
+end
+
 def bootstrap_html(html)
   text = markdown(html)
   text.gsub!("<ul>", "<ul class='list-group'>")
@@ -103,7 +111,8 @@ get "/songs" do
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
-    next if song_and_arrangement_attachments(song).empty?
+    next unless song_current_new?(song)
+    next if song_and_arrangement_attachments(song).any?
     @markdown.puts "* #{song_link(song)}"
   end
 
@@ -115,6 +124,7 @@ get "/no_media" do
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
+    next unless song_current_new? song
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["type"] =~ /Youtube|Spotify/ }
     @markdown.puts "* #{song_link(song)}"
@@ -128,6 +138,7 @@ get "/docs" do
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
+    next unless song_current_new? song
     attachments = song_and_arrangement_attachments(song)
     next if attachments.empty?
     attachments.each do |attachment|
@@ -145,6 +156,7 @@ def songs_without_type_attachments(type)
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
+    next unless song_current_new? song
     attachments = song_and_arrangement_attachments(song)
     next if attachments.find {|a| a["filename"] =~ /\.#{type}$/i }
     @markdown.puts "* #{song_link(song)}"
@@ -166,6 +178,7 @@ get "/outdated" do
 
   songs = api_hash(:songs)
   songs.each do |song|
+    next unless song_current_new? song
     if (last_song_date = song["last_scheduled_dates"])
       last_song_date = Date.parse(last_song_date)
       two_months_ago = Date.today - 60
@@ -182,6 +195,7 @@ get "/default_arrangements" do
 
   songs = api_hash(:songs, include_arrangements: true)
   songs.each do |song|
+    next unless song_current_new? song
     song["arrangements"].to_a.each do |arrangement|
       next unless arrangement["name"] =~ /^default arrangement$/i
       link = "#{PCO_URL}/arrangements/#{arrangement["id"]}"
@@ -220,9 +234,11 @@ def plan_responses(out, type)
   service_types.each do |service_type|
     plans = api_hash("service_types/#{service_type["id"]}/plans")
     plans.each do |plan|
+      next unless plan["service_type_name"] =~ /^(7|11).00/
       plan_detail = api_hash("plans/#{plan["id"]}")
       plan_people = plan_detail["plan_people"]
       plan_people.each do |plan_person|
+        next unless plan_person["category_name"] == "Band"
         next unless plan_person["status"] == type[0]
         plan_href = "#{PCO_URL}/plans/#{plan["id"]}"
         plan_time = Time.parse(plan_detail["service_times"].first["starts_at"])
@@ -250,6 +266,9 @@ get "/no_birthday" do
     people = api_hash(:people)
     people.each do |person|
       person_detail = api_hash("people/#{person["id"]}")
+      next unless person_detail["properties"].to_a.find do |property|
+        property["field"] == "Musical Role"
+      end
       next if person_detail["birthdate"]
       out << bootstrap_html("<li>#{person_link(person)}</li>")
     end
