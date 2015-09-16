@@ -26,7 +26,7 @@ PCO_KEY="..." PCO_SECRET="..." foreman start
 
 Alternatively, to deploy to [Heroku](https://www.heroku.com) click:
 
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 ## Configuration Environment Variables
 - `PCO_KEY`: the Planning Center Online API OAuth 1.0a consumer key.
