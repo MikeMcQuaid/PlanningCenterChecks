@@ -35,7 +35,7 @@ Alternatively, to deploy to [Heroku](https://www.heroku.com) click:
 - `WEB_CONCURRENCY`: the number of Unicorn (web server) processes to run.
 
 ## Status
-Just the above two methods implemented in the quickest way possible. Might flesh this out and make it more attractive if it becomes useful.
+May add additional methods in future but stable and currently working.
 
 ## Contact
 [Mike McQuaid](mailto:mike@mikemcquaid.com)
