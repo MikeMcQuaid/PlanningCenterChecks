@@ -41,5 +41,5 @@ May add additional methods in future but stable and currently working.
 [Mike McQuaid](mailto:mike@mikemcquaid.com)
 
 ## License
-PlanningCenterChecks is licensed under the [MIT License](http://en.wikipedia.org/wiki/MIT_License).
+PlanningCenterChecks is licensed under the [AGPLv3 License](https://en.wikipedia.org/wiki/Affero_General_Public_License).
 The full license text is available in [LICENSE.txt](https://github.com/mikemcquaid/PlanningCenterChecks/blob/master/LICENSE.txt).
